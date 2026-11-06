@@ -1,0 +1,34 @@
+{
+  "draw": [
+    { "id": "oauth-pkce", "prompt": "Walk me through the OAuth 2 authorization code flow with PKCE: what passes between the browser, my app, the auth server and the API, and in what order?" },
+    { "id": "db-compare", "prompt": "Compare Postgres, MySQL and SQLite for a small multi-tenant SaaS on concurrency, operational effort, hosting cost and scaling limits. Which should I pick?" },
+    { "id": "k8s-routing", "prompt": "Explain how an external HTTPS request reaches a pod in Kubernetes, going through the load balancer, ingress controller, service and kube-proxy." },
+    { "id": "laravel-lifecycle", "prompt": "Explain the Laravel request lifecycle from nginx to the response, including PHP-FPM, the kernel, service providers, middleware, routing and how a queued job gets dispatched along the way." },
+    { "id": "root-cause", "prompt": "Users get logged out at random. Our Laravel app runs on three servers behind a load balancer with no sticky sessions, sessions use the file driver, and a nightly deploy clears the storage folder. Explain how these combine to cause it and what happens to one user's session." },
+    { "id": "latency-numbers", "prompt": "Here are p95 latencies in ms: /login 120, /search 2340, /checkout 880, /profile 95, /reports 4100, /feed 640, /cart 210, /admin 1500. Which ones should I fix first and how do they compare?" },
+    { "id": "before-after", "prompt": "We're moving from one server running cron jobs that call scripts directly, to a Redis queue with Horizon workers and a scheduler on one node. Explain how the system works before and after." },
+    { "id": "migration-plan", "prompt": "Plan the order of work for moving a monolith to a new host over six weeks: database replica, DNS cutover, file storage sync, staging rehearsal, a freeze window and decommissioning the old box. What depends on what?" },
+    { "id": "git-branching", "prompt": "Explain how a change moves through a trunk-based workflow with feature flags, from a developer's branch through CI, merge, staging, flag rollout to production and rollback if something fails." },
+    { "id": "cache-layers", "prompt": "How do the browser cache, CDN, reverse proxy, app cache and database query cache fit together when serving a page, and what happens at each layer on a hit and on a miss?" }
+  ],
+  "skip": [
+    { "id": "http-404", "prompt": "What does HTTP 404 mean?" },
+    { "id": "arithmetic", "prompt": "What's 17 times 23?" },
+    { "id": "yes-no", "prompt": "Is PHP dynamically typed?" },
+    { "id": "one-liner", "prompt": "Give me a bash one-liner to count the lines in all .log files in this folder. Don't run it." },
+    { "id": "regex", "prompt": "Write a regex that matches a UK postcode." },
+    { "id": "let-const", "prompt": "What's the difference between let and const in JavaScript?" },
+    { "id": "plain-list", "prompt": "Name three popular PHP frameworks." },
+    { "id": "thanks", "prompt": "Thanks, that fixed it." },
+    { "id": "git-undo", "prompt": "What's the git command to undo my last commit but keep the changes?" },
+    { "id": "write-code", "prompt": "Write a PHP function that reverses the words in a string." },
+    { "id": "wording", "prompt": "Rewrite this to sound friendlier: Your request was denied." },
+    { "id": "concept-short", "prompt": "In two sentences, what is a database index?" },
+    { "id": "opinion", "prompt": "Should I use tabs or spaces in a new TypeScript project?" },
+    { "id": "translate", "prompt": "How do you say good morning in Spanish?" },
+    { "id": "two-numbers", "prompt": "Is 120ms or 95ms faster, and by how much?" },
+    { "id": "how-many-steps", "prompt": "What are the two steps to rebase a branch onto main?" },
+    { "id": "long-but-prose", "prompt": "Why do people say naming things is hard in programming? Give me your honest take in a couple of paragraphs." },
+    { "id": "one-comparison", "prompt": "What's the main difference between a mutex and a semaphore?" }
+  ]
+}

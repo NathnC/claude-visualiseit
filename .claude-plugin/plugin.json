@@ -1,0 +1,10 @@
+{
+  "name": "visualiseit",
+  "description": "Shows complex answers as diagrams instead of walls of text. /visualiseit redraws the previous reply as a picture, and auto mode does it only when a reply is complex enough to need one.",
+  "version": "0.1.0",
+  "author": { "name": "NathnC" },
+  "license": "MIT",
+  "repository": "https://github.com/NathnC/claude-visualiseit",
+  "homepage": "https://github.com/NathnC/claude-visualiseit#readme",
+  "keywords": ["diagram", "visualise", "visualize", "flowchart", "explain", "output"]
+}

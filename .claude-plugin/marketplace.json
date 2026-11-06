@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "claude-visualiseit",
+  "description": "Diagrams instead of walls of text in Claude Code",
+  "owner": { "name": "NathnC" },
+  "plugins": [
+    {
+      "name": "visualiseit",
+      "description": "/visualiseit redraws the previous reply as a diagram, and auto mode draws one only when a reply is complex enough to need it.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
