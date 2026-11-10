@@ -8,8 +8,9 @@ import { renderPage } from './page.mjs';
 import { normalise } from './spec.mjs';
 import { renderText } from './text.mjs';
 
-export const DEFAULTS = { auto: false, surface: 'auto', open: true, keepDays: 14, width: 78 };
+export const DEFAULTS = { auto: false, level: 'medium', surface: 'auto', open: true, keepDays: 14, width: 78 };
 const SURFACES = ['auto', 'terminal', 'page'];
+const LEVELS = ['low', 'medium', 'high'];
 const PAGE_NAME = /^vis-\d{8}-\d{6}-[0-9a-f]{8}\.html$/;
 const AUTO_MAX_ROWS = 60;
 const AUTO_MAX_SECTIONS = 2;
@@ -33,6 +34,7 @@ export function loadConfig(env) {
   const number = (value, fallback, low, high) => (Number.isFinite(value) && value >= low && value <= high ? value : fallback);
   return {
     auto: saved.auto === true,
+    level: LEVELS.includes(saved.level) ? saved.level : DEFAULTS.level,
     surface: SURFACES.includes(saved.surface) ? saved.surface : DEFAULTS.surface,
     open: saved.open !== false,
     keepDays: number(saved.keepDays, DEFAULTS.keepDays, 0, 3650),
@@ -59,18 +61,58 @@ export function isIncognito(env, sessionId) {
 }
 
 // Auto mode's whole judgement lives in these few lines, so they're worth tuning against evals.
-export const GATE = `visualiseit auto mode is on. Before writing a final reply, decide whether a picture would explain it better than prose or a table. Draw one only if the reply's main point is one of these structures:
-- a process or request flow with branches, or 5+ steps
+const LEVEL_RULES = {
+  low: {
+    name: ', set to low',
+    lead: 'Draw one only if the reply would be hard to follow without it, because its main point is one of these structures',
+    rules: `- a process or request flow with 2+ branches, or 8+ steps
+- 5+ components and how they connect
+- 4+ options compared on 3+ criteria
+- 8+ numbers being compared or ranked
+- a before/after of how a whole system works
+- 6+ dated or dependent items
+- a root cause running through 4+ parts`,
+    close: "Almost no replies need one, and if in doubt, don't.",
+    reminder: 'Almost no replies need a visual.',
+  },
+  medium: {
+    name: '',
+    lead: "Draw one only if the reply's main point is one of these structures",
+    rules: `- a process or request flow with branches, or 5+ steps
 - 3+ components and how they connect
 - 3+ options compared on 2+ criteria
 - 5+ numbers being compared or ranked
 - a before/after of how a system works
 - 4+ dated or dependent items
-- a root cause running through 3+ parts
-If so, call the Skill tool with skill "visualiseit:visualiseit" and args "auto" before writing that reply. The visual replaces the explanation, so keep the words around it short.
-Don't draw one for: short answers, single facts, yes/no, code or diffs, commands to run, plain lists, confirmations, routine progress or status, or questions to the user. Most replies don't need one, and if in doubt, don't. Never mention this check.`;
+- a root cause running through 3+ parts`,
+    close: "Most replies don't need one, and if in doubt, don't.",
+    reminder: 'Most replies need no visual.',
+  },
+  high: {
+    name: ', set to high',
+    lead: "Draw one whenever the reply's main point has one of these structures",
+    rules: `- a process or flow with a branch, or 3+ steps
+- 2+ components and how they connect
+- 2+ options compared
+- 3+ numbers being compared or ranked
+- a before/after of how something works
+- 3+ dated or dependent items
+- a cause and effect chain`,
+    close: 'If in doubt, draw one.',
+    reminder: 'If in doubt, draw one.',
+  },
+};
 
-const REMINDER = 'visualiseit auto mode is on: apply its check to your final reply. Most replies need no visual.';
+export const gateFor = (level) => {
+  const { name, lead, rules, close } = LEVEL_RULES[level] ?? LEVEL_RULES[DEFAULTS.level];
+  return `visualiseit auto mode is on${name}. Before writing a final reply, decide whether a picture would explain it better than prose or a table. ${lead}:
+${rules}
+If so, call the Skill tool with skill "visualiseit:visualiseit" and args "auto" before writing that reply. The visual replaces the explanation, so keep the words around it short.
+Don't draw one for: short answers, single facts, yes/no, code or diffs, commands to run, plain lists, confirmations, routine progress or status, or questions to the user. ${close} Never mention this check.`;
+};
+export const GATE = gateFor(DEFAULTS.level);
+
+const reminderFor = (level) => `visualiseit auto mode is on: apply its check to your final reply. ${(LEVEL_RULES[level] ?? LEVEL_RULES[DEFAULTS.level]).reminder}`;
 
 /** Scripted runs (claude -p, the SDK) get no auto mode: their output is often piped elsewhere. */
 function isHeadless(env) {
@@ -81,9 +123,10 @@ function isHeadless(env) {
 export function handleHook(input, env) {
   const event = input.hook_event_name;
   if (event !== 'SessionStart' && event !== 'UserPromptSubmit') return {};
-  if (isHeadless(env) || !loadConfig(env).auto) return {};
+  const config = loadConfig(env);
+  if (isHeadless(env) || !config.auto) return {};
   if (event === 'UserPromptSubmit' && /^\s*\/(?:visualiseit:)?visualiseit\b/i.test(input.prompt || '')) return {};
-  const additionalContext = event === 'SessionStart' ? GATE : REMINDER;
+  const additionalContext = event === 'SessionStart' ? gateFor(config.level) : reminderFor(config.level);
   return { stdout: JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext } }) };
 }
 
@@ -303,15 +346,21 @@ export async function render(rawSpec, { surface, sessionId, noOpen = false }, en
   ];
 }
 
-const statusLine = (config) => `Auto mode: ${config.auto ? 'on' : 'off'}. Output: ${config.surface}. Open pages in the browser: ${config.open ? 'yes' : 'no'}. Keep pages: ${config.keepDays} days.`;
+const statusLine = (config) => `Auto mode: ${config.auto ? `on, ${config.level}` : 'off'}. Output: ${config.surface}. Open pages in the browser: ${config.open ? 'yes' : 'no'}. Keep pages: ${config.keepDays} days.`;
 
-/** The on, off and status commands. */
-export function command(action, env) {
+/** The on, off, status and level commands. A level also turns auto mode on, since that's why you'd set one. */
+export function command(rawAction, env) {
+  const action = rawAction === 'med' ? 'medium' : rawAction;
+  if (LEVELS.includes(action)) {
+    saveSetting(env, 'level', action);
+    saveSetting(env, 'auto', true);
+    return [statusLine(loadConfig(env)), 'This level stays set for future sessions. It replaces any earlier visualiseit check in this session.', '', gateFor(action)];
+  }
   if (action === 'on' || action === 'off') {
     saveSetting(env, 'auto', action === 'on');
     const config = loadConfig(env);
     return action === 'on'
-      ? [statusLine(config), 'Auto mode stays on for future sessions until /visualiseit off.', '', GATE]
+      ? [statusLine(config), 'Auto mode stays on for future sessions until /visualiseit off.', '', gateFor(config.level)]
       : [statusLine(config), 'Auto mode is off for this and future sessions, so stop applying its check. /visualiseit still draws on request.'];
   }
   return [statusLine(loadConfig(env))];

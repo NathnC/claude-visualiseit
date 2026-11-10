@@ -1,6 +1,6 @@
 # claude-visualiseit
 
-**Diagrams instead of walls of text in Claude Code.** Type `/visualiseit` and Claude redraws its last reply as a picture. Turn on auto mode and it draws one by itself, but only when a reply is complex enough to need it.
+**Diagrams instead of walls of text in Claude Code.** Type `/visualiseit` and Claude redraws its last reply as a picture. Turn on auto mode and it draws one by itself when a reply is complex enough to need it, and you choose how often with `low`, `medium` or `high`.
 
 **Before**
 
@@ -49,13 +49,20 @@ Install the claude-visualiseit plugin for me from https://github.com/NathnC/clau
 1. Run: claude plugin marketplace add NathnC/claude-visualiseit
 2. Run: claude plugin install visualiseit@claude-visualiseit
 3. Check Node.js is on my PATH (node --version). The plugin needs it; tell me if it's missing.
-4. Tell me to restart Claude Code, then summarise in two lines how to use /visualiseit and /visualiseit on.
+4. Tell me to restart Claude Code, then summarise in two lines how to use /visualiseit and /visualiseit low, medium or high.
 ```
 
-Or type this at the Claude Code prompt:
+Or type this slash command at the Claude Code prompt. It needs Claude Code 2.1.275 or later, and asks you to confirm adding the marketplace:
 
 ```text
 /plugin install visualiseit --marketplace NathnC/claude-visualiseit
+```
+
+On an older version, use two commands:
+
+```text
+/plugin marketplace add NathnC/claude-visualiseit
+/plugin install visualiseit@claude-visualiseit
 ```
 
 Or install from a terminal:
@@ -66,6 +73,23 @@ claude plugin install visualiseit@claude-visualiseit
 # then restart Claude Code
 ```
 
+To check it worked, type `ping`, then `/visualiseit`. You should get this:
+
+```text
+Ping got a pong
+
+The exchange
+ You   Claude
+  │       │
+  │  ping │
+  ├───────►
+  │  pong │
+  ◄┄┄┄┄┄┄┄┤
+  │       │
+```
+
+The exact wording will vary, because Claude writes the labels.
+
 ## Use
 
 | Command | What it does |
@@ -74,9 +98,14 @@ claude plugin install visualiseit@claude-visualiseit
 | `/visualiseit the deploy part` | Draws only that part, or a topic you name. |
 | `/visualiseit page` | Forces a page in your browser. |
 | `/visualiseit terminal` | Forces a diagram in the terminal. |
-| `/visualiseit on` | Turns on auto mode. It stays on for future sessions. |
-| `/visualiseit off` | Turns off auto mode. `/visualiseit` still works. |
+| `/visualiseit on` | Turns on auto mode at your saved level. It stays on for future sessions. |
+| `/visualiseit off` | Turns off auto mode and keeps your level. `/visualiseit` still works. |
+| `/visualiseit low` | Auto mode draws rarely, only when a reply would be hard to follow without a picture. |
+| `/visualiseit medium` | Auto mode draws for clearly structured replies. This is the default. `med` works too. |
+| `/visualiseit high` | Auto mode draws whenever a reply has any real structure. |
 | `/visualiseit status` | Shows the current settings. |
+
+Setting a level also turns auto mode on.
 
 You can also just ask, for example: "draw me that" or "explain that visually".
 
@@ -84,17 +113,20 @@ A redraw shows only what the reply said. Claude is told not to add facts, steps 
 
 ## When auto mode draws
 
-Auto mode is off until you run `/visualiseit on`. Then, before a final reply, Claude asks whether the reply's main point is one of these structures:
+Auto mode is off until you run `/visualiseit on` or set a level. Then, before a final reply, Claude checks whether the reply's main point is one of these structures. The level sets how much it takes:
 
-- a process or request flow with branches, or 5+ steps
-- 3+ components and how they connect
-- 3+ options compared on 2+ criteria
-- 5+ numbers being compared or ranked
-- a before/after of how a system works
-- 4+ dated or dependent items
-- a root cause running through 3+ parts
+| Structure | `low` | `medium` | `high` |
+|---|---|---|---|
+| Process or flow | 2+ branches, or 8+ steps | Branches, or 5+ steps | A branch, or 3+ steps |
+| Components and how they connect | 5+ | 3+ | 2+ |
+| Options compared | 4+ on 3+ criteria | 3+ on 2+ criteria | 2+ |
+| Numbers compared or ranked | 8+ | 5+ | 3+ |
+| Before/after | Of a whole system | Of a system | Of anything |
+| Dated or dependent items | 6+ | 4+ | 3+ |
+| Root cause | Through 4+ parts | Through 3+ parts | Any cause and effect chain |
+| If in doubt | Don't draw | Don't draw | Draw |
 
-It stays out of short answers, single facts, yes/no, code and diffs, commands, plain lists, confirmations, routine status and questions to you. If in doubt, it doesn't draw.
+At every level it stays out of short answers, single facts, yes/no, code and diffs, commands, plain lists, confirmations, routine status and questions to you.
 
 **The first time it fires, Claude Code asks to allow the skill.** Choose "don't ask again". `/visualiseit` itself never asks. To skip the prompt altogether, add this to your `~/.claude/settings.json`:
 
@@ -104,14 +136,217 @@ It stays out of short answers, single facts, yes/no, code and diffs, commands, p
 
 When it does draw, the visual replaces the explanation: Claude keeps the words around it to about 60, plus any exact commands you need.
 
-Tested with real Claude runs on [28 prompts](evals/cases.json), 10 that should draw and 18 that shouldn't:
+Tested with real Claude runs on Sonnet, against the same [34 prompts](evals/cases.json) at each level:
 
-| Model | Drew when it should | Stayed quiet when it should | Median words beside the diagram |
+| Level | Drew on | Right calls | Median words beside the diagram |
 |---|---|---|---|
-| Sonnet | 10/10 | 18/18 | 56 |
-| Opus | 10/10 | 18/18 | 53 |
+| `low` | 9 of 34 | 26/27 | 43 |
+| `medium` | 13 of 34 | 34/34 | 51 |
+| `high` | 18 of 34 | 31/31 | 44 |
 
-That's one run per prompt, on prompts written while tuning the rules, so treat it as a sign the rules work rather than a measured accuracy. Run `node evals/run.mjs` to check it yourself.
+"Right calls" leaves out prompts that could fairly go either way at that level, which is why the totals differ. The one miss was on `low`, which drew for a three-part setup it should have left alone. An earlier run on Opus at `medium` got 28/28 on the original 28 prompts.
+
+That's one run per prompt, on prompts written while tuning the rules, so treat it as a sign the levels work rather than a measured accuracy. These prompts were picked to test the rules, so don't read 13 of 34 as how often it'll draw in your sessions. Run `node evals/run.mjs --level high` to check it yourself.
+
+## Examples
+
+Every diagram below is real output from the script. The spec above each one is what Claude writes, and the script does the rest.
+
+### `sequence`: who calls whom, in order
+
+```text
+title: How a login gets a token
+
+sequence: One login, in order
+actors: Browser | API | Database
+Browser -> API | POST /login
+API -> Database | find user
+Database --> API | user row
+API --> Browser | token
+```
+
+```text
+How a login gets a token
+
+One login, in order
+ Browser          API       Database
+    │              │            │
+    │  POST /login │            │
+    ├──────────────►            │
+    │              │  find user │
+    │              ├────────────►
+    │              │  user row  │
+    │              ◄┄┄┄┄┄┄┄┄┄┄┄┄┤
+    │  token       │            │
+    ◄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤            │
+    │              │            │
+```
+
+### `flow`: branches and loops
+
+```text
+title: A failed payment retries twice, then a person gets it
+
+flow: Payment handling
+Charge card -> Paid?
+Paid? -> Send receipt | yes
+Paid? -> Retry queue | no
+Retry queue --> Charge card | up to 2 retries
+Retry queue -> Alert support | still failing
+node: Send receipt | Send receipt | tone=good
+node: Alert support | Alert support | tone=bad
+```
+
+```text
+A failed payment retries twice, then a person gets it
+
+Payment handling
+               ┌─────────────┐
+               │ Charge card │
+               └─┬───────────┘
+                 │          ▲ up to 2 retries
+                 │         ┌┘
+                 │         ┆
+                 ▼         ┆
+              ┌───────┐    ┆
+              │ Paid? │    ┆
+              └─┬────┬┘    ┆
+            yes │    │ no  ┆
+                │    └┐    └┄┄┄┄┄┐
+                │     │          ┆
+                ▼     ▼          ┆
+┌────────────────┐  ┌────────────┴┐
+│ ✓ Send receipt │  │ Retry queue │
+└────────────────┘  └──────┬──────┘
+                           │ still failing
+                           ▼
+                  ┌─────────────────┐
+                  │ ✗ Alert support │
+                  └─────────────────┘
+```
+
+### `compare`: options against criteria
+
+```text
+title: Postgres fits a small multi-tenant SaaS best
+
+compare: Database options
+columns: Concurrency | Row-level security | Hosting cost
+best: Postgres | High ~good | Built in ~good | Medium
+row: MySQL | High ~good | None ~bad | Medium
+row: SQLite | One writer ~bad | None ~bad | Free ~good
+```
+
+```text
+Postgres fits a small multi-tenant SaaS best
+
+Database options
+┌────────────┬──────────────┬────────────────────┬──────────────┐
+│            │ Concurrency  │ Row-level security │ Hosting cost │
+├────────────┼──────────────┼────────────────────┼──────────────┤
+│ ★ Postgres │ ✓ High       │ ✓ Built in         │ Medium       │
+├────────────┼──────────────┼────────────────────┼──────────────┤
+│ MySQL      │ ✓ High       │ ✗ None             │ Medium       │
+├────────────┼──────────────┼────────────────────┼──────────────┤
+│ SQLite     │ ✗ One writer │ ✗ None             │ ✓ Free       │
+└────────────┴──────────────┴────────────────────┴──────────────┘
+```
+
+### `bars`: quantities side by side
+
+```text
+title: Most of the page load is one query
+
+bars: Time per request
+unit: ms
+bar: Orders query | 840 | tone=bad
+bar: Template render | 120
+bar: Auth check | 45
+bar: Cache lookup | 8 | tone=good
+```
+
+```text
+Most of the page load is one query
+
+Time per request
+✗ Orders query  ███████████████████████████████████████████████████████ 840 ms
+Template render ███████▉ 120 ms
+Auth check      ███ 45 ms
+✓ Cache lookup  ▌ 8 ms
+```
+
+### `timeline`: dated or ordered events
+
+```text
+title: The outage took 47 minutes from deploy to fix
+
+timeline: Tuesday
+at: 14:02 | Deploy goes out
+at: 14:09 | Error rate climbs | detail=checkout only | tone=warn
+at: 14:21 | Alert fires | tone=bad
+at: 14:35 | Rollback starts
+at: 14:49 | Back to normal | tone=good
+```
+
+```text
+The outage took 47 minutes from deploy to fix
+
+Tuesday
+14:02 ● Deploy goes out
+      │
+14:09 ● ! Error rate climbs
+      │   checkout only
+      │
+14:21 ● ✗ Alert fires
+      │
+14:35 ● Rollback starts
+      │
+14:49 ● ✓ Back to normal
+```
+
+### `tree`: hierarchies and file structures
+
+```text
+title: Where the auth code lives
+
+tree: Project layout
+- my-app
+  - app
+    - Http
+      - Controllers | detail=login routes
+      - Middleware | detail=token check | tone=warn
+    - Models
+  - config
+    - auth.php | detail=guards
+  - tests
+```
+
+```text
+Where the auth code lives
+
+Project layout
+my-app
+├─ app
+│  ├─ Http
+│  │  ├─ Controllers (login routes)
+│  │  └─ ! Middleware (token check)
+│  └─ Models
+├─ config
+│  └─ auth.php (guards)
+└─ tests
+```
+
+### Things to type
+
+```text
+/visualiseit                         redraw the last reply
+/visualiseit the rollback step       draw only that part
+/visualiseit page                    open the last reply as a page
+/visualiseit terminal the database   draw that part in the terminal
+/visualiseit high                    draw more often from now on
+/visualiseit low                     draw less often from now on
+draw me how those services connect   works without the slash command
+```
 
 ## What it can draw
 
@@ -160,6 +395,7 @@ Settings go in `~/.claude/visualiseit/config.json`:
 ```json
 {
   "auto": false,
+  "level": "medium",
   "surface": "auto",
   "open": true,
   "keepDays": 14,
@@ -168,6 +404,7 @@ Settings go in `~/.claude/visualiseit/config.json`:
 ```
 
 - `auto` is what `/visualiseit on` and `off` change.
+- `level` is how often auto mode draws: `low`, `medium` or `high`. `/visualiseit low`, `medium` and `high` change it.
 - `surface` can be `auto`, `terminal` or `page`.
 - `open: false` writes pages without opening a browser. It's also skipped over SSH or with no display, and you get the path instead.
 - `keepDays` is how long pages are kept. They're cleaned up whenever a new page is written.
@@ -175,22 +412,22 @@ Settings go in `~/.claude/visualiseit/config.json`:
 
 ## Limits
 
-- **Auto mode is Claude's judgement, not a guarantee.** It's instructions rather than a hard rule, so it can occasionally miss a reply that deserved a picture, or draw one you didn't need. `/visualiseit` covers the misses.
+- **Auto mode is Claude's judgement, not a guarantee.** It's instructions rather than a hard rule, so it can occasionally miss a reply that deserved a picture, or draw one you didn't need. The levels change how readily it draws, not exact counts. `/visualiseit` covers the misses.
 - **Token cost:** auto mode adds about 230 tokens at session start and about 25 per prompt. Each diagram then costs its JSON plus, for the terminal, the pasted diagram. With auto mode off, the only cost is the skill's one-line listing.
 - **Terminal diagrams need a monospace font with box-drawing characters,** and a window at least as wide as `width`. Emoji and CJK widths vary by terminal, so those labels can shift by a character in some.
 - **Pages open a browser tab,** including when auto mode draws one you didn't ask for. Set `open` to `false` if you'd rather click the path.
 - **`claude -p` and the SDK:** auto mode is off in scripted runs, so it won't draw into piped output. `/visualiseit` still works if you ask for it.
 - **[`claude-incognito`](https://github.com/NathnC/claude-incognito):** incognito sessions never write a page, because a page would outlive the session that's being deleted. Diagrams stay in the terminal.
-- **Mid-session `off`:** Claude is told to stop, but the check it read earlier stays in its context until the session compacts or ends.
+- **Changing mid-session:** Claude is told to stop or to use the new level, but the check it read earlier stays in its context until the session compacts or ends. A new session is the clean way to apply a change.
 - Needs Node.js on `PATH`. Claude Code installed through npm already has it.
 
 ## Develop
 
 ```bash
-node --test                 # unit tests, no tokens used
-claude --plugin-dir .       # run it from this folder
-claude plugin validate .    # check the manifest and hooks
-node evals/run.mjs          # measure auto mode's judgement. Uses real tokens, about $1.25 on Sonnet
+node --test                         # unit tests, no tokens used
+claude --plugin-dir .               # run it from this folder
+claude plugin validate .            # check the manifest and hooks
+node evals/run.mjs --level medium   # measure auto mode at a level. Uses real tokens, about $1.50 on Sonnet
 ```
 
 ## Uninstall

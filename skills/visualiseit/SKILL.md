@@ -1,7 +1,7 @@
 ---
 name: visualiseit
-description: Explains something as a diagram instead of a wall of text, in the terminal or as a local page. Use when the user types /visualiseit [on|off|status|page|terminal|focus], asks to see, draw, diagram, chart, map out or visualise/visualize something, or says "explain that visually" or "show me a picture of that". Also use when visualiseit auto mode's check says a reply needs a visual.
-argument-hint: "[on|off|status|page|terminal|what to focus on]"
+description: Explains something as a diagram instead of a wall of text, in the terminal or as a local page. Use when the user types /visualiseit [on|off|status|low|medium|high|page|terminal|focus], asks to see, draw, diagram, chart, map out or visualise/visualize something, or says "explain that visually" or "show me a picture of that". Also use when visualiseit auto mode's check says a reply needs a visual.
+argument-hint: "[on|off|status|low|medium|high|page|terminal|what to focus on]"
 allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/../../scripts/visualiseit.mjs" *)
 ---
 
@@ -9,15 +9,15 @@ allowed-tools: Bash(node "${CLAUDE_SKILL_DIR}/../../scripts/visualiseit.mjs" *)
 
 Arguments: `$ARGUMENTS`
 
-## on, off, status
+## on, off, status, low, medium, high
 
-If the arguments are exactly `on`, `off` or `status`, run this, give the user its first line or two, and stop:
+If the arguments are exactly `on`, `off`, `status`, `low`, `medium`, `med` or `high`, run this, give the user its first line or two, and stop:
 
 ```bash
 node "${CLAUDE_SKILL_DIR}/../../scripts/visualiseit.mjs" $ARGUMENTS
 ```
 
-If it turned auto mode on, follow the check it prints from now on.
+If it prints a check, follow that check from now on, in place of any earlier one.
 
 ## Anything else: draw it
 

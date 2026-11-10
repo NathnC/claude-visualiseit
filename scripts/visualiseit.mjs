@@ -2,7 +2,7 @@
 // Command line used by the skill:
 //   visualiseit.mjs render [--surface auto|terminal|page] [--session <id>] [--no-open]   (spec on stdin)
 //   visualiseit.mjs last --session <id>
-//   visualiseit.mjs on|off|status
+//   visualiseit.mjs on|off|status|low|medium|med|high
 import fs from 'node:fs';
 import { command, lastReply, render } from './lib.mjs';
 import { parseSpec } from './parse.mjs';
@@ -49,10 +49,14 @@ async function main() {
     case 'on':
     case 'off':
     case 'status':
+    case 'low':
+    case 'medium':
+    case 'med':
+    case 'high':
       process.stdout.write(`${command(action, env).join('\n')}\n`);
       break;
     default:
-      throw new SpecError(`Unknown command "${action}". Use render, last, on, off or status.`);
+      throw new SpecError(`Unknown command "${action}". Use render, last, on, off, status, low, medium or high.`);
   }
 }
 

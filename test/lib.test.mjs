@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, test } from 'node:test';
-import { GATE, command, handleHook, isIncognito, lastReply, loadConfig, pagesDir, previousReply, prunePages, render } from '../scripts/lib.mjs';
+import { GATE, command, gateFor, handleHook, isIncognito, lastReply, loadConfig, pagesDir, previousReply, prunePages, render } from '../scripts/lib.mjs';
 
 const cli = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'visualiseit.mjs');
 const hookScript = path.join(path.dirname(cli), 'hook.mjs');
@@ -68,6 +68,54 @@ test('on and off keep other settings', () => {
   assert.deepEqual(saved, { width: 100, mine: 'kept', auto: true });
 });
 
+test('medium is the default, and its check is the one the evals were tuned on', () => {
+  assert.equal(loadConfig(env).level, 'medium');
+  assert.equal(GATE, gateFor('medium'));
+  assert.match(GATE, /^visualiseit auto mode is on\. /);
+  assert.match(GATE, /3\+ components/);
+  assert.match(GATE, /Most replies don't need one, and if in doubt, don't\./);
+});
+
+test('a level saves, turns auto mode on and prints its check', () => {
+  for (const level of ['low', 'medium', 'high']) {
+    command('off', env);
+    const output = command(level, env);
+    assert.equal(loadConfig(env).level, level);
+    assert.equal(loadConfig(env).auto, true);
+    assert.match(output[0], new RegExp(`Auto mode: on, ${level}`));
+    assert.ok(output.includes(gateFor(level)));
+  }
+});
+
+test('med is short for medium', () => {
+  command('high', env);
+  command('med', env);
+  assert.equal(loadConfig(env).level, 'medium');
+});
+
+test('the hooks use the chosen level', () => {
+  command('low', env);
+  assert.equal(context(hook('SessionStart')), gateFor('low'));
+  assert.match(context(hook('UserPromptSubmit', { prompt: 'hi' })), /Almost no replies/);
+  command('high', env);
+  assert.equal(context(hook('SessionStart')), gateFor('high'));
+  assert.match(context(hook('UserPromptSubmit', { prompt: 'hi' })), /If in doubt, draw/);
+});
+
+test('off and on keep the level', () => {
+  command('high', env);
+  command('off', env);
+  assert.deepEqual(hook('SessionStart'), {});
+  assert.ok(command('on', env).includes(gateFor('high')));
+});
+
+test('every level names the skill properly and keeps the same exclusions', () => {
+  for (const level of ['low', 'medium', 'high']) {
+    assert.match(gateFor(level), /skill "visualiseit:visualiseit"/);
+    assert.match(gateFor(level), /Don't draw one for: short answers/);
+  }
+});
+
 test('scripted runs get no auto mode', () => {
   command('on', env);
   assert.deepEqual(hook('SessionStart', {}, { ...env, CLAUDE_CODE_ENTRYPOINT: 'sdk-cli' }), {});
@@ -85,9 +133,9 @@ test('the reminder stays out of /visualiseit itself', () => {
 
 test('a broken config means defaults, not a crash', () => {
   fs.mkdirSync(path.join(home, 'visualiseit'), { recursive: true });
-  for (const bad of ['{not json', '[]', 'null', '{"auto":"yes","surface":"nope","width":-1,"keepDays":"x"}']) {
+  for (const bad of ['{not json', '[]', 'null', '{"auto":"yes","level":"loud","surface":"nope","width":-1,"keepDays":"x"}']) {
     fs.writeFileSync(path.join(home, 'visualiseit', 'config.json'), bad);
-    assert.deepEqual(loadConfig(env), { auto: false, surface: 'auto', open: true, keepDays: 14, width: 78 });
+    assert.deepEqual(loadConfig(env), { auto: false, level: 'medium', surface: 'auto', open: true, keepDays: 14, width: 78 });
   }
 });
 
@@ -254,7 +302,9 @@ test('the command line handles a UTF-8 BOM, on, off and status', () => {
   assert.equal(run.status, 0);
   assert.match(runCli(['status']).stdout, /Auto mode: off/);
   assert.match(runCli(['on']).stdout, /Auto mode: on/);
-  assert.match(runCli(['status']).stdout, /Auto mode: on/);
+  assert.match(runCli(['status']).stdout, /Auto mode: on, medium/);
+  assert.match(runCli(['high']).stdout, /Auto mode: on, high/);
+  assert.match(runCli(['status']).stdout, /Auto mode: on, high/);
   assert.match(runCli(['off']).stdout, /Auto mode: off/);
   assert.match(runCli(['last', '--session', 'missing']).stdout, /No previous reply/);
 });
